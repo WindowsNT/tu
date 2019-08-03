@@ -1,7 +1,7 @@
 ﻿
-#include "f:\\TOOLS\\UWL\\rw\\diff.hpp"
-#include "f:\\TOOLS\\ProgrammingLibs\\\ziputils\\\zipall.h"
-#include "f:\\TOOLS\\ProgrammingLibs\\\restapi\\\rest.h"
+#include "diff.hpp"
+#include "zipall.h"
+#include "rest.h"
 
 namespace TU
 {
