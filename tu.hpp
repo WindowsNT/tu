@@ -39,6 +39,7 @@ namespace TU
 		wstring user;
 		wstring pass;
 		wstring path;
+		wstring uploadpass;
 	};
 
 	struct PTR
@@ -158,7 +159,7 @@ namespace TU
 
 	public:
 
-		TU(const char* prjg,const wchar_t* host,const wchar_t* path,bool SSL = false,unsigned short Port = 0,DWORD flg = 0,const wchar_t* un = 0,const wchar_t* pwd = 0)
+		TU(const char* prjg,const wchar_t* host,const wchar_t* path,bool SSL = false,unsigned short Port = 0,DWORD flg = 0,const wchar_t* un = 0,const wchar_t* pwd = 0,const wchar_t* uploadpwd = 0)
 		{
 			ProjectGuid = prjg;
 			endpoint.host = host;
@@ -170,6 +171,8 @@ namespace TU
 				endpoint.user = un;
 			if (pwd)
 				endpoint.pass = pwd;
+			if (uploadpwd)
+				endpoint.uploadpass = uploadpwd;
 		}
 
 		void AddFiles(vector<tuple<wstring,string>>& nfiles)
@@ -683,7 +686,9 @@ namespace TU
 			wchar_t cl[1000];
 			swprintf_s(cl, 1000, L"Content-Length: %zu", zipdata.size());
 			wstring hdr3 = cl;
-			auto hIX = rest.RequestWithBuffer(endpoint.path.c_str(), L"POST", { hdr0,hdr1,hdr2,hdr3 }, zipdata.data(), zipdata.size(),
+			swprintf_s(cl, 1000, L"X-Password: %s", endpoint.uploadpass.c_str());
+			wstring hdr4 = cl;
+			auto hIX = rest.RequestWithBuffer(endpoint.path.c_str(), L"POST", { hdr0,hdr1,hdr2,hdr3,hdr4 }, zipdata.data(), zipdata.size(),
 				[&](size_t sent,size_t tot,void* lp) -> HRESULT
 				{
 					if (func)

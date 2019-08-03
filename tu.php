@@ -29,7 +29,7 @@ class TU
 	public function CreateSQL()
 	{
 		$this->db = new SQLite3("tu.db");
-		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT)");
+		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
 		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT)");
 	}
 
@@ -57,6 +57,10 @@ if (!$prjrow)
 
 if ($function == "upload")
 {
+	$password = $_SERVER['HTTP_X_PASSWORD'];
+	if (!password_verify($password,$prjrow['PWD']))
+		die("403 Password");
+
 	$zipdata = file_get_contents('php://input');
 	$zn = tempnam(sys_get_temp_dir(),"zipx");
 	unlink($zn);
