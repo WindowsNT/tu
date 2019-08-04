@@ -20,16 +20,16 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 
 	HRESULT hr = 0;
 	// Upload 
-	//hr = tu.Upload();
+	hr = tu.Upload();
 
-/*	// Check if I have a newer version
+	// Check if I have a newer version
 	hr = tu.Check();
 	if (hr == S_FALSE)
 	{
 		// There is something newer
 		tu.DownloadFull();
 	}
-*/
+
 	hr = tu.CheckWithSigs();
 	if (hr == S_FALSE)
 	{

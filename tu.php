@@ -10,6 +10,7 @@ class TU
 {
 	public $db = null;
 	public $lastRowID = 0;
+	public $Compression = 0;
 
 	public function guidv4()
 	{
@@ -20,6 +21,20 @@ class TU
 		$data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
 		$data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
 		return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+	}
+
+
+	public function cmpr($x)
+	{
+		if ($this->Compression == 0)
+			return $x;
+		return gzcompress($x);
+	}
+	public function uncmpr($x)
+	{
+		if ($this->Compression == 0)
+			return $x;
+		return gzuncompress($x);
 	}
 
 	public function Query($q,$arr = array())
@@ -56,6 +71,7 @@ class TU
 }
 
 $tu = new TU;
+$tu->Compression = 1;
 $function = "";
 $prj = "";
 
@@ -74,6 +90,7 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET) && array_key_exis
 	$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
 	$blob = stream_get_contents($stream);
 	fclose($stream);
+	$blob = $tu->uncmpr($blob);
 
 	header("Content-Type: application/octet-stream");
 	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$_GET['n']));
@@ -247,6 +264,7 @@ if ($function == "upload")
 			die("500 Cannot update database");
 
 		$hs = base64_encode(hash("sha256",$f1,true));
+		$f1 = $tu->cmpr($f1);
 		$tu->Query("UPDATE TU SET FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
@@ -292,7 +310,6 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		if (!$za2->open($zn2,ZipArchive::CREATE | ZipArchive::OVERWRITE))
 			die("500 Cannot create ZIP file");
 	}
-//	if ($function == "hashes") die(print_r($guids));
 
 
 	$em = "200 ";
@@ -317,6 +334,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 					$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 					$blob = stream_get_contents($stream);
 					fclose($stream);
+					$blob = $tu->uncmpr($blob);
 			
 					$za2->addFromString($guid,$blob);
 				}
@@ -333,6 +351,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 					$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 					$blob = stream_get_contents($stream);
 					fclose($stream);
+					$blob = $tu->uncmpr($blob);
 					$ha = hash("sha256",$blob,true);
 			
 					$za2->addFromString($guid,$ha);
@@ -378,6 +397,7 @@ if ($function == "patch")
 		$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 		$blob = stream_get_contents($stream);
 		fclose($stream);
+		$blob = $tu->uncmpr($blob);
 
 		if ($d[1] == "F")
 		{
