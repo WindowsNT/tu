@@ -1,0 +1,3 @@
+[submodule "uploader/xml"]
+	path = uploader/xml
+	url = https://github.com/WindowsNT/xml
