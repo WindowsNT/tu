@@ -21,7 +21,36 @@ Create a new project with a name and an upload password
 ```C++
 TU::TU tu("ea6bde7e-ee50-43a5-9a2c-4eb80a3630d1",L"www.example.org",L"/update2/tu.php",true,443,0,0,0,L"12345678");
 ```
+
 Use the GUID shown by tu.php admin panel, your site, the path to tu.php, SSL/Port/U/P options, and the upload password you have used in the project creation
+
+
+```C++
+
+// Add referenced files
+vector<tuple<wstring, string>> tux;
+auto a = L"m.docx";
+tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(a), string("A44BC1B3-D919-4835-A7D8-FC633EB7B7EC")));
+auto b = L"m.pdf";
+tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(b), string("A44BC1B3-D919-4835-A7D8-FC633EB7B7ED")));
+tu.AddFiles(tux);
+
+// Upload your stuff from an external uploader application (don't put this in a redistributed executable as it has to use your upload password)
+tu.Upload();
+
+// Check for updates
+auto hr = tu.Check(); // S_FALSE if updates are there, S_OK if no updates needed.
+
+// Check for updates with differential support
+auto hr = tu.CheckWithSigs();
+
+// Download updates, full method
+auto hr = tu.DownloadFull();
+
+// Download updates, differential method
+auto hr = tu.DownloadDiff();
+
+```
 
 
 

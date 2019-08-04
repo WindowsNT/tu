@@ -11,7 +11,6 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 	CoInitializeEx(0, COINIT_APARTMENTTHREADED);
 
 	vector<tuple<wstring, string>> tux;
-
 	auto a = L"m.docx";
 	tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(a), string("A44BC1B3-D919-4835-A7D8-FC633EB7B7EC")));
 	auto b = L"m.pdf";
