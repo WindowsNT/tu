@@ -559,7 +559,8 @@ namespace TU
 							vector<char> d;
 							if (FAILED(z.Extract(guid.c_str(), d)))
 								return E_FAIL;
-
+							if (d.empty())
+								return E_FAIL;
 							f.RSig = d;
 							Has = true;
 							break;
