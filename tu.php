@@ -202,8 +202,9 @@ if (array_key_exists('admin',$_GET))
 			while ($r2 = $q2->fetchArray())
 			{
 				printf("<tr>");
-				printf("<td>%s<br>",$r2['NAME']);
-				printf("%s</td>",$r2['CLSID']);
+				printf("<td>%s",$r2['NAME']);
+//				printf("<br>%s</td>",$r2['CLSID']);
+				printf("</td>",$r2['CLSID']);
 
 				printf("<td>%.1f KB</td>",$r2['LE']/1024);
 				
@@ -502,26 +503,26 @@ if ($function == "patch")
 			die("500 Invalid file");
 
 		// Update updates
-		if (!in_array($e['CLSID'],$downs))
+		if (!array_key_exists($e['CLSID'],$downs))
 		{
 			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
-			$downs[] = $e['CLSID'];
+			$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
+			$blob = stream_get_contents($stream);
+			fclose($stream);
+			$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
+			$downs[$e['CLSID']] = $blob;
 		}
 
 	
-		$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
-		$blob = stream_get_contents($stream);
-		fclose($stream);
-		$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
 
 		if ($d[1] == "F")
 		{
 			// Full 
-			$za2->addFromString($guid,$blob);
+			$za2->addFromString($guid,$downs[$e['CLSID']]);
 		}
 		else
 		{
-			$po = substr($blob,$d[2],$d[3]);
+			$po = substr($downs[$e['CLSID']],$d[2],$d[3]);
 			$za2->addFromString($d[1],$po);
 		}
 	}
