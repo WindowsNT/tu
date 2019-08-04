@@ -625,8 +625,10 @@ namespace TU
 					if (!rmsg)
 						return E_FAIL;
 					int v = atoi(rmsg);
-					if (v != 220)
+					if (v == 331)
 						return S_FALSE;
+					if (v != 220)
+						return E_FAIL;
 					rmsg = strchr(rmsg, ',');
 					if (rmsg)
 						rmsg++;
