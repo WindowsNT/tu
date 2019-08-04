@@ -61,7 +61,7 @@ class TU
 	{
 		$this->db = new SQLite3(TU_DATABASE);
 		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
-		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT)");
+		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER)");
 	}
 
 	function __construct() 
@@ -76,7 +76,7 @@ $function = "";
 $prj = "";
 
 
-if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET) && array_key_exists('n',$_GET))
+if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET))
 {
 	// Download this file
 	$prjrow = $tu->Query("SELECT * FROM PROJECT WHERE CLSID = ?",array($_GET['p']))->fetchArray();
@@ -93,7 +93,7 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET) && array_key_exis
 	$blob = $tu->uncmpr($blob);
 
 	header("Content-Type: application/octet-stream");
-	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$_GET['n']));
+	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$frow['NAME']));
 	echo $blob;
 	die;
 	}
@@ -158,11 +158,22 @@ if (array_key_exists('admin',$_GET))
 			printf('<td>%s</td>',$r['CLSID']);
 
 			printf('<td>');
+
+			printf('<table class="table"><thead><th>Name</th><th>GUID</th><th>Link</th><th>Checks</th><th>Downloads</th></thead><tbody>');
 			$q2 = $tu->Query("SELECT * FROM TU WHERE PID = ?",array($r['ID']));
 			while ($r2 = $q2->fetchArray())
 			{
-				printf('%s &mdash; <a href="tu.php?p=%s&f=%s&n=%s">Direct</a><br>',$r2['CLSID'],$r['CLSID'],$r2['CLSID'],$r2['NAME']);
+				printf("<tr>");
+				printf("<td>%s</td>",$r2['NAME']);
+				printf("<td>%s</td>",$r2['CLSID']);
+				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
+				printf("<td>%s</td>",(int)$r2['CHECKS']);
+				printf("<td>%s</td>",(int)$r2['DOWNLOADS']);
+
+				printf("</tr>");
+//				printf('%s &mdash; <br>',$r2['CLSID'],$r['CLSID'],$r2['CLSID'],$r2['NAME']);
 			}
+			printf('</tbody></table>');
 
 			printf('</td>');
 
@@ -198,7 +209,7 @@ if (array_key_exists('admin',$_GET))
 		<div id="newproj" style="display:none">
 	 <form id="myform2" method="GET" action="tu.php" autocomplete="off">
         <div class="form-group">
-            <label for="name">Name:</label>
+            <label for="name">Project Name:</label>
             <input type="text" class="form-control" name="name" autofocus required  autocomplete="off"/>
         </div>
         <div class="form-group">
@@ -306,7 +317,7 @@ if ($function == "upload")
 
 		$hs = base64_encode(hash("sha256",$f1,true));
 		$f1 = $tu->cmpr($f1);
-		$tu->Query("UPDATE TU SET NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
+		$tu->Query("UPDATE TU SET CHECKS = 0,DOWNLOADS = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
 	die("200");
@@ -364,6 +375,12 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		$e = $tu->Query("SELECT * FROM TU WHERE PID = ? AND CLSID = ?",array($prjrow['ID'],$guid))->fetchArray();
 		if (!$e)
 			$em .= "404";
+
+		// Update Checks
+		if ($function == "check" || $function == "checkandsig")
+			$tu->Query("UPDATE TU SET CHECKS = ? WHERE CLSID = ?",array((int)$e['CHECKS'] + 1,$e['CLSID']));
+		if ($function == "download")
+			$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
 
 		$eh = base64_decode($e['HASH']);
 
@@ -434,6 +451,10 @@ if ($function == "patch")
 		$e = $tu->Query("SELECT * FROM TU WHERE PID = ? AND CLSID = ?",array($prjrow['ID'],$guid))->fetchArray();
 		if (!$e)
 			die("500 Invalid file");
+
+		// Update downloads
+		$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
+
 	
 		$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 		$blob = stream_get_contents($stream);
