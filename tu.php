@@ -10,7 +10,6 @@ class TU
 {
 	public $db = null;
 	public $lastRowID = 0;
-	public $Compression = 0;
 
 	public function guidv4()
 	{
@@ -24,15 +23,15 @@ class TU
 	}
 
 
-	public function cmpr($x)
+	public function cmpr($x,$comp = 0)
 	{
-		if ($this->Compression == 0)
+		if ($comp == 0)
 			return $x;
 		return gzcompress($x);
 	}
-	public function uncmpr($x)
+	public function uncmpr($x,$comp = 0)
 	{
-		if ($this->Compression == 0)
+		if ($comp == 0)
 			return $x;
 		return gzuncompress($x);
 	}
@@ -61,7 +60,7 @@ class TU
 	{
 		$this->db = new SQLite3(TU_DATABASE);
 		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
-		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER,UPDATES INTEGER)");
+		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER,UPDATES INTEGER,COMPRESSED INTEGER)");
 	}
 
 	function __construct() 
@@ -71,7 +70,6 @@ class TU
 }
 
 $tu = new TU;
-$tu->Compression = 1;
 $function = "";
 $prj = "";
 
@@ -92,7 +90,7 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET))
 	$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
 	$blob = stream_get_contents($stream);
 	fclose($stream);
-	$blob = $tu->uncmpr($blob);
+	$blob = $tu->uncmpr($blob,$frow['COMPRESSED']);
 
 	header("Content-Type: application/octet-stream");
 	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$frow['NAME']));
@@ -138,6 +136,38 @@ if (array_key_exists('admin',$_GET))
 			header("Location: tu.php?admin");
 			die;
 		}
+		if (array_key_exists('uncompress',$_GET))
+		{
+			$frow = $tu->Query("SELECT * FROM TU WHERE CLSID = ? AND COMPRESSED = 1",array($_GET['uncompress']))->fetchArray();
+			if ($frow)
+				{
+				$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
+				$blob = stream_get_contents($stream);
+				fclose($stream);
+
+				$blob = $tu->uncmpr($blob,1);
+				$tu->Query("UPDATE TU SET COMPRESSED = 0, FILEX = ? WHERE CLSID = ?",array($blob,$_GET['uncompress']));
+				}
+
+			header("Location: tu.php?admin");
+			die;
+		}
+		if (array_key_exists('compress',$_GET))
+		{
+			$frow = $tu->Query("SELECT * FROM TU WHERE CLSID = ? AND COMPRESSED = 0",array($_GET['compress']))->fetchArray();
+			if ($frow)
+				{
+				$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
+				$blob = stream_get_contents($stream);
+				fclose($stream);
+
+				$blob = $tu->cmpr($blob,1);
+				$tu->Query("UPDATE TU SET COMPRESSED = 1, FILEX = ? WHERE CLSID = ?",array($blob,$_GET['compress']));
+				}
+
+			header("Location: tu.php?admin");
+			die;
+		}
 		if (array_key_exists('createp',$_GET))
 		{
 //			print_r($_GET); die;
@@ -156,25 +186,36 @@ if (array_key_exists('admin',$_GET))
 		}
 		echo '<div style="margin: 20px;"><div id="hdr">Admin Panel  &mdash; <a href="javascript:np()">Create New Project</a> &mdash; <a href="tu.php?admin=1&logout=1">Logout</a><hr></div>';
 		echo '<div id="lp">Projects<br><br>';
-		printf('<table class="table"><thead><th></th><th>Name</th><th>GUID</th><th>Files</th><th>Actions</th></thead><tbody>');
+		printf('<table class="table"><thead><th></th><th>Name</th><th>Files</th><th>Actions</th></thead><tbody>');
 		$q = $tu->Query("SELECT * FROM PROJECT");
 		while ($r = $q->fetchArray())
 		{
 			printf('<tr>');
 			printf('<td></td>');
-			printf('<td>%s</td>',$r['NAME']);
-			printf('<td>%s</td>',$r['CLSID']);
+			printf('<td>%s<br>',$r['NAME']);
+			printf('%s</td>',$r['CLSID']);
 
 			printf('<td>');
 
-			printf('<table class="table"><thead><th>Name</th><th>GUID</th><th>Link</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
+			printf('<table class="table"><thead><th>Name</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
 			$q2 = $tu->Query("SELECT * FROM TU WHERE PID = ?",array($r['ID']));
 			while ($r2 = $q2->fetchArray())
 			{
 				printf("<tr>");
-				printf("<td>%s</td>",$r2['NAME']);
-				printf("<td>%s</td>",$r2['CLSID']);
+				printf("<td>%s<br>",$r2['NAME']);
+				printf("%s</td>",$r2['CLSID']);
+
+/*				$stream = $tu->db->openBlob('TU', 'FILEX', $r2['ID']);
+				//$blobs = fstat($stream);
+				fclose($stream);
+				printf("<td>%s KB</td>",$blobs/1024);
+				*/
+				
 				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
+				if ($r2['COMPRESSED'] == 1)
+					printf('<td><b>Yes</b> &mdash; <a href="tu.php?admin=1&uncompress=%s">No</a></td>',$r2['CLSID']);
+				else
+				printf('<td><a href="tu.php?admin=1&compress=%s">Yes</a> &mdash; <b>No</b></td>',$r2['CLSID']);
 				printf("<td>%s</td>",(int)$r2['DOWNLOADS']);
 				printf("<td>%s</td>",(int)$r2['CHECKS']);
 				printf("<td>%s</td>",(int)$r2['UPDATES']);
@@ -320,14 +361,14 @@ if ($function == "upload")
 		$e = $tu->Query("SELECT * FROM TU WHERE PID = ? AND CLSID = ?",array($prjrow['ID'],$guid))->fetchArray();
 		if (!$e)
 		{
-			$tu->Query("INSERT INTO TU (CLSID,PID) VALUES(?,?) ",array($guid,$prjrow['ID']));
+			$tu->Query("INSERT INTO TU (CLSID,PID,COMPRESSED) VALUES(?,?,?) ",array($guid,$prjrow['ID'],1));
 			$e = $tu->Query("SELECT * FROM TU WHERE CLSID = ?",array($guid))->fetchArray();
 		}
 		if (!$e)
 			die("500 Cannot update database");
 
 		$hs = base64_encode(hash("sha256",$f1,true));
-		$f1 = $tu->cmpr($f1);
+		$f1 = $tu->cmpr($f1,$e['COMPRESSED']);
 		$tu->Query("UPDATE TU SET CHECKS = 0,DOWNLOADS = 0,UPDATES = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
@@ -403,7 +444,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 					$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 					$blob = stream_get_contents($stream);
 					fclose($stream);
-					$blob = $tu->uncmpr($blob);
+					$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
 			
 					$za2->addFromString($guid,$blob);
 				}
@@ -420,7 +461,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 					$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 					$blob = stream_get_contents($stream);
 					fclose($stream);
-					$blob = $tu->uncmpr($blob);
+					$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
 					$ha = hash("sha256",$blob,true);
 			
 					$za2->addFromString($guid,$ha);
@@ -475,7 +516,7 @@ if ($function == "patch")
 		$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 		$blob = stream_get_contents($stream);
 		fclose($stream);
-		$blob = $tu->uncmpr($blob);
+		$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
 
 		if ($d[1] == "F")
 		{
