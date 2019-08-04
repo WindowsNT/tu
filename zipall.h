@@ -1,3 +1,5 @@
+#ifndef _ZIPALL_H
+#define _ZIPALL_H
 
 #include <windows.h>
 #include <stdio.h>
@@ -5098,3 +5100,6 @@ namespace ZIPUTILS
 
 		};
 	}
+
+
+#endif // _ZIPALL_H
