@@ -59,6 +59,28 @@ $tu = new TU;
 $function = "";
 $prj = "";
 
+
+if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET) && array_key_exists('n',$_GET))
+{
+	// Download this file
+	$prjrow = $tu->Query("SELECT * FROM PROJECT WHERE CLSID = ?",array($_GET['p']))->fetchArray();
+	if (!$prjrow)
+		die;
+		
+	$frow = $tu->Query("SELECT * FROM TU WHERE CLSID = ? AND PID = ?",array($_GET['f'],$prjrow['ID']))->fetchArray();
+	if (!$frow)
+		die;
+
+	$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
+	$blob = stream_get_contents($stream);
+	fclose($stream);
+
+	header("Content-Type: application/octet-stream");
+	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$_GET['n']));
+	echo $blob;
+	die;
+	}
+
 if (array_key_exists('admin',$_GET))
 {
 	if (array_key_exists('logout',$_GET))
@@ -167,6 +189,9 @@ if (array_key_exists('HTTP_X_PROJECT',$_SERVER))
 if (array_key_exists('HTTP_X_FUNCTION',$_SERVER))
 	$function = $_SERVER['HTTP_X_FUNCTION'];
 
+if ($function == "")
+	die;
+
 if ($prj == "")
 	die("404 - No project GUID specified");
 
@@ -230,11 +255,13 @@ if ($function == "upload")
 
 
 // check/download
-if ($function == "check" || $function == "checkandsig" ||$function == "download" )
+if ($function == "check" || $function == "checkandsig" ||$function == "download" || $function == "hashes" )
 {
 	$zipdata = file_get_contents('php://input');
 	$zn = tempnam(sys_get_temp_dir(),"zipx");
 	unlink($zn);
+
+
 	
 	if (!file_put_contents($zn,$zipdata))
 		die("500 Cannot create ZIP file");
@@ -257,7 +284,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 	}
 	$za->close();
 
-	if($function == "download" || $function == "checkandsig")
+	if($function == "download" || $function == "checkandsig" || $function == "hashes" )
 	{
 		$zn2 = tempnam(sys_get_temp_dir(),"zipx");
 		unlink($zn2);
@@ -265,6 +292,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		if (!$za2->open($zn2,ZipArchive::CREATE | ZipArchive::OVERWRITE))
 			die("500 Cannot create ZIP file");
 	}
+//	if ($function == "hashes") die(print_r($guids));
 
 
 	$em = "200 ";
@@ -280,6 +308,8 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 			$em .= "404";
 
 		$eh = base64_decode($e['HASH']);
+
+
 		if ($eh != $f1)
 			{
 				if ($function == "download")
@@ -298,13 +328,22 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 			
 					$za2->addFromString($guid,$blob);
 				}
+				if ($function == "hashes")
+				{
+					$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
+					$blob = stream_get_contents($stream);
+					fclose($stream);
+					$ha = hash("sha256",$blob,true);
+			
+					$za2->addFromString($guid,$ha);
+				}
 				$em .= "331";
 			}
 		else
 			$em .= "220";
 	}
 
-	if($function == "download" || $function == "checkandsig")
+	if($function == "download" || $function == "checkandsig"|| $function == "hashes")
 	{
 		$za2->close();
 

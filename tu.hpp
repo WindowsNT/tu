@@ -22,6 +22,7 @@ namespace TU
 		vector<char> RSig;
 		vector<char> LSig;
 		vector<char> Diff;
+		vector<char> RHash;
 		vector<TUPATCH> Patches;
 
 		TUFILE(const wchar_t* l, const char* r)
@@ -361,9 +362,35 @@ namespace TU
 
 			ZIPUTILS::ZIP z(tmp.c_str());
 			vector<char> zipdata;
+			vector<char> zipdataHashesFor3;
+
+			for (auto& m : files)
+			{
+				vector<char> tt;
+				HASH h;
+				if (FAILED(LoadFile(m.Local.c_str(), tt)))
+					h.hash("", 0);
+				else
+					h.hash(tt.data(), (DWORD)tt.size());
+
+				vector<char> ht;
+				h.get(ht);
+				PTR item(ht);
+
+				string f1 = "hash-" + m.Remote;
+				if (FAILED(z.PutFile(f1.c_str(), item.p, (unsigned long)item.sz)))
+					return E_FAIL;
+			}
+			LoadFileA(tmp.c_str(), zipdata);
+			DeleteFileA(tmp.c_str());
+			if (zipdata.empty())
+				return E_FAIL;
 
 			if (mode == 3)
 			{
+				zipdataHashesFor3 = zipdata;
+				zipdata.clear();
+
 				// Put the patching information
 				// ID,from,len|
 				string d;
@@ -395,36 +422,50 @@ namespace TU
 				memcpy(zipdata.data(), d.data(), d.size());
 
 			}
-			else
-			{
-				for (auto& m : files)
-				{
-					vector<char> tt;
-					HASH h;
-					if (FAILED(LoadFile(m.Local.c_str(), tt)))
-						h.hash("", 0);
-					else
-						h.hash(tt.data(), (DWORD)tt.size());
-
-					vector<char> ht;
-					h.get(ht);
-					PTR item(ht);
-
-					string f1 = "hash-" + m.Remote;
-					if (FAILED(z.PutFile(f1.c_str(), item.p, (unsigned long)item.sz)))
-						return E_FAIL;
-				}
-				LoadFileA(tmp.c_str(), zipdata);
-				DeleteFileA(tmp.c_str());
-				if (zipdata.empty())
-					return E_FAIL;
-			}
 
 
 
 			// Upload
 			if (FAILED(rest.Connect(endpoint.host.c_str(), endpoint.SSL, endpoint.Port,endpoint.flg, endpoint.user.c_str(), endpoint.pass.c_str())))
 				return E_FAIL;
+
+			if (mode == 1 || mode == 3)
+			{
+				// Download also the hash list
+				wstring hdr0 = L"X-Project: " + u(ProjectGuid.c_str());
+				wstring hdr1 = L"X-Function: hashes";
+				wstring hdr2 = L"Content-Type: application/octet-stream";
+				wchar_t cl[1000];
+				PTR p(mode == 3 ? zipdataHashesFor3 : zipdata);
+				swprintf_s(cl, 1000, L"Content-Length: %zu", p.sz);
+				wstring hdr3 = cl;
+				auto hIX = rest.RequestWithBuffer(endpoint.path.c_str(), L"POST", { hdr0,hdr1,hdr2,hdr3 }, p.p, p.sz, 0, 0, true, 0);
+				vector<char> r;
+				rest.ReadToMemory(hIX, r);
+
+				ZIPUTILS::ZIP z(r.data(), r.size());
+				vector<ZIPUTILS::mz_zip_archive_file_stat> l;
+				if (FAILED(z.EnumFiles(l)))
+					return E_FAIL;
+				for (auto& ll : l)
+				{
+					vector<char> d;
+					if (FAILED(z.Extract(ll.m_filename, d)))
+						return E_FAIL;
+					if (d.empty())
+						return E_FAIL;
+
+					// Put the hash
+					for (auto& f : files)
+					{
+						if (f.Remote == ll.m_filename)
+						{
+							f.RHash = d;
+							break;
+						}
+					}
+				}
+			}
 
 			wstring hdr0 = L"X-Project: " + u(ProjectGuid.c_str());
 			wstring hdr1 = L"X-Function: check";
@@ -543,6 +584,17 @@ namespace TU
 						}
 						p0 += sizeof(RdcNeed);
 					}
+
+					// Check the hash
+					HASH h;
+					h.hash(There.data(), (DWORD)There.size());
+					vector<char> lhash;
+					h.get(lhash);
+					if (lhash.size() != f.RHash.size())
+						return E_FAIL;
+					if (memcmp(lhash.data(), f.RHash.data(), lhash.size()) != 0)
+						return E_FAIL;
+
 					wstring old = f.Local + OldSuffix;
 					DeleteFile(old.c_str());
 					MoveFileEx(f.Local.c_str(), old.c_str(), MOVEFILE_COPY_ALLOWED);
@@ -601,6 +653,16 @@ namespace TU
 						{
 							vector<char> d;
 							if (FAILED(z.Extract(guid.c_str(), d)))
+								return E_FAIL;
+
+							// Check the hash
+							HASH h;
+							h.hash(d.data(),(DWORD) d.size());
+							vector<char> lhash;
+							h.get(lhash);
+							if (lhash.size() != f.RHash.size())
+								return E_FAIL;
+							if (memcmp(lhash.data(),f.RHash.data(),lhash.size()) != 0)
 								return E_FAIL;
 
 							wstring old = f.Local + L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";

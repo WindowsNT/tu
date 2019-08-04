@@ -40,7 +40,7 @@ int main(int argc,char** argv)
 				printf("Uploading %llu / %llu bytes...",cur,sz);
 				return S_OK;
 				});;
-			printf("End, return value: 0x%X\r\n",hr);
+			printf("\r\nEnd, return value: 0x%X\r\n",hr);
 		}
 	}
 	return 0;
