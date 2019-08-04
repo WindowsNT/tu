@@ -1,3 +1,5 @@
+#ifndef _REST_H
+#define _REST_H
 
 #include <functional>
 #include <utility>
@@ -567,3 +569,5 @@ bool ssl = false;
 
 
 }
+
+#endif // _REST_H

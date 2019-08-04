@@ -3,6 +3,7 @@
 #include "..\\tu.hpp"
 
 #include ".\\xml\\xml3all.h"
+using namespace std;
 int main(int argc,char** argv)
 {
 	using namespace std;

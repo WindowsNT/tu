@@ -1,10 +1,11 @@
 ﻿
+
+namespace TU
+{
 #include "diff.hpp"
 #include "zipall.h"
 #include "rest.h"
 
-namespace TU
-{
 	inline const wchar_t* OldSuffix = L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
 	using namespace std;
 	struct TUPATCH

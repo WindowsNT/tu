@@ -14,5 +14,5 @@
 #include <tchar.h>
 #include <memory>
 #include <functional>
-
+#include <atlbase.h>
 
