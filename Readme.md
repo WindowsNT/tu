@@ -2,6 +2,7 @@
 A C++ library for Windows for automatically updating your software, with differential update support.
 Article at CodeProject: https://www.codeproject.com/Articles/5163875/TU-The-easy-update-library-for-your-projects
 
+
 ## WebServer setup
 Change the three defines on top of tu.php to define database name, admin u+p.
 Defaults:
