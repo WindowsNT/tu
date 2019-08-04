@@ -149,8 +149,8 @@ if (array_key_exists('admin',$_GET))
 				$tu->Query("UPDATE TU SET COMPRESSED = 0, FILEX = ? WHERE CLSID = ?",array($blob,$_GET['uncompress']));
 				}
 
-			header("Location: tu.php?admin");
-			die;
+				header("Location: tu.php?admin=1&project={$_GET['project']}");
+				die;
 		}
 		if (array_key_exists('compress',$_GET))
 		{
@@ -165,7 +165,7 @@ if (array_key_exists('admin',$_GET))
 				$tu->Query("UPDATE TU SET COMPRESSED = 1, FILEX = ? WHERE CLSID = ?",array($blob,$_GET['compress']));
 				}
 
-			header("Location: tu.php?admin");
+			header("Location: tu.php?admin=1&project={$_GET['project']}");
 			die;
 		}
 		if (array_key_exists('createp',$_GET))
@@ -184,18 +184,32 @@ if (array_key_exists('admin',$_GET))
 			header("Location: tu.php?admin");
 			die;
 		}
-		echo '<div style="margin: 20px;"><div id="hdr">Admin Panel  &mdash; <a href="javascript:np()">Create New Project</a> &mdash; <a href="tu.php?admin=1&logout=1">Logout</a><hr></div>';
-		echo '<div id="lp">Projects<br><br>';
-		printf('<table class="table"><thead><th></th><th>Name</th><th>Files</th><th>Actions</th></thead><tbody>');
-		$q = $tu->Query("SELECT * FROM PROJECT");
-		while ($r = $q->fetchArray())
+		echo '<div style="margin: 20px;"><div id="hdr"><a href="tu.php?admin">Admin Panel Home</a> &mdash; <a href="javascript:np()">Create New Project</a> &mdash; <a href="tu.php?admin=1&logout=1">Logout</a><hr></div>';
+		if (!array_key_exists("project",$_GET))
 		{
-			printf('<tr>');
-			printf('<td></td>');
-			printf('<td>%s<br>',$r['NAME']);
-			printf('%s</td>',$r['CLSID']);
+			echo '<div id="lp"><h4>Projects</h4><br><br>';
+			printf('<table class="table"><thead><th></th><th>Name</th><th>View</th></thead><tbody>');
+			$q = $tu->Query("SELECT * FROM PROJECT");
+			while ($r = $q->fetchArray())
+			{
+				printf('<tr>');
+				printf('<td></td>');
+				printf('<td>%s<br>',$r['NAME']);
+				printf('<td><a href="tu.php?admin=1&project=%s">View</a><br>',$r['ID']);
+			}
+			printf("</tbody></table>");
+			printf('Database size %s KB &mdash; <a href="tu.php?admin=1&vacuum=1">Vacuum</a>',filesize(TU_DATABASE)/1024);
 
-			printf('<td>');
+		}
+		else
+		{
+			echo '<div id="lp">';
+			$r = $tu->Query("SELECT * FROM PROJECT WHERE ID = ?",array($_GET['project']))->fetchArray();
+			if (!$r)
+				die;
+
+			printf('%s - %s<br><br>',$r['NAME'],$r['CLSID']);
+
 
 			printf('<table class="table"><thead><th>Name</th><th>Size</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
 			$q2 = $tu->Query("SELECT *,LENGTH(cast(FILEX as blob)) AS LE FROM TU WHERE PID = ?",array($r['ID']));
@@ -210,9 +224,9 @@ if (array_key_exists('admin',$_GET))
 				
 				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
 				if ($r2['COMPRESSED'] == 1)
-					printf('<td><b>Yes</b> &mdash; <a href="tu.php?admin=1&uncompress=%s">No</a></td>',$r2['CLSID']);
+					printf('<td><b>Yes</b> &mdash; <a href="tu.php?admin=1&uncompress=%s&project=%s">No</a></td>',$r2['CLSID'],$r['ID']);
 				else
-				printf('<td><a href="tu.php?admin=1&compress=%s">Yes</a> &mdash; <b>No</b></td>',$r2['CLSID']);
+				printf('<td><a href="tu.php?admin=1&compress=%s&project=%s">Yes</a> &mdash; <b>No</b></td>',$r2['CLSID'],$r['ID']);
 				printf("<td>%s</td>",(int)$r2['DOWNLOADS']);
 				printf("<td>%s</td>",(int)$r2['CHECKS']);
 				printf("<td>%s</td>",(int)$r2['UPDATES']);
@@ -222,17 +236,10 @@ if (array_key_exists('admin',$_GET))
 			}
 			printf('</tbody></table>');
 
-			printf('</td>');
-
-			printf('<td>');
 			printf('<a href="javascript:AskDelete(%s)">Delete</a>',$r['ID']);
-			printf('</td>');
 
-			printf('</tr>');
+			printf("</div>");
 		}
-		printf("</tbody></table>");
-		printf('Database size %s KB &mdash; <a href="tu.php?admin=1&vacuum=1">Vacuum</a>',filesize(TU_DATABASE)/1024);
-		printf("</div>");
 		?>
 		<script>
 		function np()
