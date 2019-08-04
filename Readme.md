@@ -22,7 +22,10 @@ Create a new project with a name and an upload password
 TU::TU tu("ea6bde7e-ee50-43a5-9a2c-4eb80a3630d1",L"www.example.org",L"/update2/tu.php",true,443,0,0,0,L"12345678");
 ```
 
-Use the GUID shown by tu.php admin panel, your site, the path to tu.php, SSL/Port/U/P options, and the upload password you have used in the project creation
+Use the GUID shown by tu.php admin panel, your site, the path to tu.php, SSL/Port/U/P options, and the upload password you have used in the project creation if you plan to do any uploads.
+The upload password will only be used from an "uploader" app; Don't enter the password in your distributed executable as users can sniff it.
+
+
 
 
 ```C++
