@@ -34,7 +34,13 @@ int main(int argc,char** argv)
 				tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(a), forward<string>(g)));
 			}
 			tu.AddFiles(tux);
-			tu.Upload();
+			printf("\r\n");
+			auto hr = tu.Upload([](unsigned long long cur, unsigned long long sz, void* lp) -> HRESULT {
+				printf("\r");
+				printf("Uploading %llu / %llu bytes...",cur,sz);
+				return S_OK;
+				});;
+			printf("End, return value: 0x%X\r\n",hr);
 		}
 	}
 	return 0;

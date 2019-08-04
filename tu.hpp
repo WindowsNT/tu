@@ -5,7 +5,7 @@
 
 namespace TU
 {
-	const wchar_t* OldSuffix = L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
+	inline const wchar_t* OldSuffix = L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
 	using namespace std;
 	struct TUPATCH
 	{
@@ -67,7 +67,7 @@ namespace TU
 		}
 	};
 
-	wstring u(const char* t)
+	inline wstring u(const char* t)
 	{
 		vector<wchar_t> x(strlen(t) + 100);
 		MultiByteToWideChar(CP_UTF8, 0, t,(int) strlen(t), x.data(),(int) x.size());
