@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "f:\\TOOLS\\tu8\\tu.hpp"
+#include "..\\tu.hpp"
 
 #include ".\\xml\\xml3all.h"
 int main(int argc,char** argv)
@@ -11,6 +11,12 @@ int main(int argc,char** argv)
 		printf("Usage: uploader <Name of Project>");
 		exit(1);
 	}
+
+	wchar_t mf[1000] = { 0 };
+	GetModuleFileName(0, mf, 1000);
+	PathRemoveFileSpec(mf);
+	SetCurrentDirectory(mf);
+
 	XML3::XML x("u.xml");
 	auto& pr = x.GetRootElement()["projects"];
 	for (auto& p : pr)
@@ -18,7 +24,7 @@ int main(int argc,char** argv)
 		if (p.vv("name").GetValue() == string(argv[1]))
 		{
 			printf("Uploading project %s...", argv[1]);
-			TU::TU tu(p.vv("g").GetValue().c_str(), L"www.example.org", L"/update2/tu.php", true, 443, 0, 0, 0, p.vv("up").GetWideValue().c_str());
+			TU::TU tu(p.vv("g").GetValue().c_str(), L"www.turboirc.com", L"/update2/tu.php", true, 443, 0, 0, 0, p.vv("up").GetWideValue().c_str());
 
 			vector<tuple<wstring, string>> tux;
 			for (auto& f : p["files"])

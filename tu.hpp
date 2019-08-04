@@ -5,6 +5,7 @@
 
 namespace TU
 {
+	const wchar_t* OldSuffix = L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
 	using namespace std;
 	struct TUPATCH
 	{
@@ -333,13 +334,24 @@ namespace TU
 			return foo(3, func, lp);
 		}
 
+		void DeleteOlds()
+		{
+			for (auto& f : files)
+			{
+				wstring fx = f.Local + OldSuffix;
+				DeleteFile(fx.c_str());
+			}
+		}
+
 		HRESULT Check()
 		{
+			DeleteOlds();
 			return foo(0);
 		}
 
 		HRESULT CheckWithSigs(std::function<HRESULT(unsigned long long, unsigned long long, void*)> func = nullptr, void* lp = 0)
 		{
+			DeleteOlds();
 			return foo(2,func,lp);
 		}
 
@@ -531,7 +543,7 @@ namespace TU
 						}
 						p0 += sizeof(RdcNeed);
 					}
-					wstring old = f.Local + L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
+					wstring old = f.Local + OldSuffix;
 					DeleteFile(old.c_str());
 					MoveFileEx(f.Local.c_str(), old.c_str(), MOVEFILE_COPY_ALLOWED);
 					if (FAILED(PutFile(f.Local.c_str(), There)))

@@ -339,3 +339,6 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 /uploader/u.xml
+/uploader/uploader.exe
+/uploader/inst.bat
+/uploader/uploader.tlog
