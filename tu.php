@@ -61,7 +61,7 @@ class TU
 	{
 		$this->db = new SQLite3(TU_DATABASE);
 		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
-		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER)");
+		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER,UPDATES INTEGER)");
 	}
 
 	function __construct() 
@@ -86,6 +86,8 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET))
 	$frow = $tu->Query("SELECT * FROM TU WHERE CLSID = ? AND PID = ?",array($_GET['f'],$prjrow['ID']))->fetchArray();
 	if (!$frow)
 		die;
+
+	$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($frow['DOWNLOADS'] + 1,$frow['CLSID']));
 
 	$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
 	$blob = stream_get_contents($stream);
@@ -130,6 +132,12 @@ if (array_key_exists('admin',$_GET))
 
 	if (array_key_exists('adminuser',$_SESSION) && $_SESSION['adminuser'] == TU_ADMIN_USERNAME)
 	{
+		if (array_key_exists('vacuum',$_GET))
+		{
+			$tu->Query("VACUUM");
+			header("Location: tu.php?admin");
+			die;
+		}
 		if (array_key_exists('createp',$_GET))
 		{
 //			print_r($_GET); die;
@@ -159,7 +167,7 @@ if (array_key_exists('admin',$_GET))
 
 			printf('<td>');
 
-			printf('<table class="table"><thead><th>Name</th><th>GUID</th><th>Link</th><th>Checks</th><th>Downloads</th></thead><tbody>');
+			printf('<table class="table"><thead><th>Name</th><th>GUID</th><th>Link</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
 			$q2 = $tu->Query("SELECT * FROM TU WHERE PID = ?",array($r['ID']));
 			while ($r2 = $q2->fetchArray())
 			{
@@ -167,8 +175,9 @@ if (array_key_exists('admin',$_GET))
 				printf("<td>%s</td>",$r2['NAME']);
 				printf("<td>%s</td>",$r2['CLSID']);
 				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
-				printf("<td>%s</td>",(int)$r2['CHECKS']);
 				printf("<td>%s</td>",(int)$r2['DOWNLOADS']);
+				printf("<td>%s</td>",(int)$r2['CHECKS']);
+				printf("<td>%s</td>",(int)$r2['UPDATES']);
 
 				printf("</tr>");
 //				printf('%s &mdash; <br>',$r2['CLSID'],$r['CLSID'],$r2['CLSID'],$r2['NAME']);
@@ -183,7 +192,9 @@ if (array_key_exists('admin',$_GET))
 
 			printf('</tr>');
 		}
-		printf("</tbody></table></div>");
+		printf("</tbody></table>");
+		printf('Database size %s KB &mdash; <a href="tu.php?admin=1&vacuum=1">Vacuum</a>',filesize(TU_DATABASE)/1024);
+		printf("</div>");
 		?>
 		<script>
 		function np()
@@ -317,7 +328,7 @@ if ($function == "upload")
 
 		$hs = base64_encode(hash("sha256",$f1,true));
 		$f1 = $tu->cmpr($f1);
-		$tu->Query("UPDATE TU SET CHECKS = 0,DOWNLOADS = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
+		$tu->Query("UPDATE TU SET CHECKS = 0,DOWNLOADS = 0,UPDATES = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
 	die("200");
@@ -380,7 +391,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		if ($function == "check" || $function == "checkandsig")
 			$tu->Query("UPDATE TU SET CHECKS = ? WHERE CLSID = ?",array((int)$e['CHECKS'] + 1,$e['CLSID']));
 		if ($function == "download")
-			$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
+			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
 
 		$eh = base64_decode($e['HASH']);
 
@@ -453,10 +464,10 @@ if ($function == "patch")
 		if (!$e)
 			die("500 Invalid file");
 
-		// Update downloads
+		// Update updates
 		if (!in_array($e['CLSID'],$downs))
 		{
-			$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
+			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
 			$downs[] = $e['CLSID'];
 		}
 
