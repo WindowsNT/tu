@@ -199,6 +199,7 @@ if (array_key_exists('admin',$_GET))
 			}
 			printf("</tbody></table>");
 			printf('Database size %s KB &mdash; <a href="tu.php?admin=1&vacuum=1">Vacuum</a>',filesize(TU_DATABASE)/1024);
+			printf("</div>");
 
 		}
 		else
