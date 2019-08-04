@@ -441,6 +441,7 @@ if ($function == "patch")
 		die("500 Cannot create ZIP file");
 
 	$r = explode("|",file_get_contents('php://input'));
+	$downs = array();
 	foreach($r as $rr)
 	{
 		$d = explode(",",$rr);
@@ -453,7 +454,11 @@ if ($function == "patch")
 			die("500 Invalid file");
 
 		// Update downloads
-		$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
+		if (!in_array($e['CLSID'],$downs))
+		{
+			$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($e['DOWNLOADS'] + 1,$e['CLSID']));
+			$downs[] = $e['CLSID'];
+		}
 
 	
 		$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
