@@ -93,6 +93,7 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET))
 	$blob = $tu->uncmpr($blob,$frow['COMPRESSED']);
 
 	header("Content-Type: application/octet-stream");
+	header(sprintf("Content-Length: %s",strlen($blob)));
 	header(sprintf("Content-Disposition: attachment; filename=\"%s\"",$frow['NAME']));
 	echo $blob;
 	die;
@@ -440,7 +441,6 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
 
 		$eh = base64_decode($e['HASH']);
-
 
 		if ($eh != $f1)
 			{

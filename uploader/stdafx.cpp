@@ -2,6 +2,7 @@
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma comment(lib,"wininet.lib")
+#pragma comment(lib,"bcrypt.lib")
 #pragma comment(lib,"Comctl32.lib")
 
 

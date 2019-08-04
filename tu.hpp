@@ -23,6 +23,7 @@ namespace TU
 		vector<char> RSig;
 		vector<char> LSig;
 		vector<char> Diff;
+		vector<char> LHash;
 		vector<char> RHash;
 		vector<TUPATCH> Patches;
 
@@ -169,6 +170,7 @@ namespace TU
 
 	public:
 
+		vector<TUFILE>& GetFiles() { return files; }
 		TU(const char* prjg,const wchar_t* host,const wchar_t* path,bool SSL = false,unsigned short Port = 0,DWORD flg = 0,const wchar_t* un = 0,const wchar_t* pwd = 0,const wchar_t* uploadpwd = 0)
 		{
 			ProjectGuid = prjg;
@@ -716,6 +718,76 @@ namespace TU
 						rmsg++;
 				}
 			}
+			return S_OK;
+		}
+
+		HRESULT GetHashes()
+		{
+			if (FAILED(rest.Connect(endpoint.host.c_str(), endpoint.SSL, endpoint.Port, endpoint.flg, endpoint.user.c_str(), endpoint.pass.c_str())))
+				return E_FAIL;
+
+			string tmp = TempFileA();
+			ZIPUTILS::ZIP z(tmp.c_str());
+			vector<char> zipdata;
+
+			for (auto& m : files)
+			{
+				vector<char> tt;
+				HASH h;
+				if (FAILED(LoadFile(m.Local.c_str(), tt)))
+					h.hash("", 0);
+				else
+					h.hash(tt.data(), (DWORD)tt.size());
+
+				vector<char> ht;
+				h.get(ht);
+				m.LHash = ht;
+				memset(ht.data(), 0, ht.size());
+				PTR item(ht);
+
+				string f1 = "hash-" + m.Remote;
+				if (FAILED(z.PutFile(f1.c_str(), item.p, (unsigned long)item.sz)))
+					return E_FAIL;
+			}
+			LoadFileA(tmp.c_str(), zipdata);
+			DeleteFileA(tmp.c_str());
+			if (zipdata.empty())
+				return E_FAIL;
+
+			// Download also the hash list
+			wstring hdr0 = L"X-Project: " + u(ProjectGuid.c_str());
+			wstring hdr1 = L"X-Function: hashes";
+			wstring hdr2 = L"Content-Type: application/octet-stream";
+			wchar_t cl[1000];
+			swprintf_s(cl, 1000, L"Content-Length: %zu", zipdata.size());
+			wstring hdr3 = cl;
+			auto hIX = rest.RequestWithBuffer(endpoint.path.c_str(), L"POST", { hdr0,hdr1,hdr2,hdr3 }, zipdata.data(), zipdata.size(), 0, 0, true, 0);
+			vector<char> r;
+			rest.ReadToMemory(hIX, r);
+
+			ZIPUTILS::ZIP z2(r.data(), r.size());
+			vector<ZIPUTILS::mz_zip_archive_file_stat> l;
+			if (FAILED(z2.EnumFiles(l)))
+				return E_FAIL;
+			for (auto& ll : l)
+			{
+				vector<char> d;
+				if (FAILED(z2.Extract(ll.m_filename, d)))
+					return E_FAIL;
+				if (d.empty())
+					return E_FAIL;
+
+				// Put the hash
+				for (auto& f : files)
+				{
+					if (f.Remote == ll.m_filename)
+					{
+						f.RHash = d;
+						break;
+					}
+				}
+			}
+
 			return S_OK;
 		}
 
