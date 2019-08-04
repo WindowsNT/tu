@@ -22,5 +22,8 @@
     <None Include="..\tu.php">
       <Filter>Code</Filter>
     </None>
+    <None Include="..\Readme.md">
+      <Filter>Code</Filter>
+    </None>
   </ItemGroup>
 </Project>

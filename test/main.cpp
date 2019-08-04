@@ -1,8 +1,7 @@
 #include "stdafx.h"
 #include "..\\tu.hpp"
 
-const char* MyProject = "E40E52F9-D8B6-4EA8-BEB3-773988436A9E";
-TU::TU tu(MyProject,L"www.example.org",L"/php/tu.php",true,443,0,0,0,L"12345678");
+TU::TU tu("ea6bde7e-ee50-43a5-9a2c-4eb80a3630d1",L"www.example.org",L"/update2/tu.php",true,443,0,0,0,L"12345678");
 
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
@@ -17,7 +16,7 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 	tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(a), string("A44BC1B3-D919-4835-A7D8-FC633EB7B7EC")));
 	auto b = L"m.pdf";
 	tux.emplace_back(make_tuple<wstring, string>(forward<wstring>(b), string("A44BC1B3-D919-4835-A7D8-FC633EB7B7ED")));
-	tu.AddFiles({ tux });
+	tu.AddFiles(tux);
 
 	HRESULT hr = 0;
 	// Upload 
