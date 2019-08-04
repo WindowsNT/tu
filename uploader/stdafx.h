@@ -14,6 +14,5 @@
 #include <tchar.h>
 #include <memory>
 #include <functional>
-using namespace std;
 
 
