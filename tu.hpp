@@ -76,6 +76,13 @@ namespace TU
 		return x.data();
 	}
 
+	inline string a(const wchar_t* t)
+	{
+		vector<char> x(wcslen(t)*2 + 100);
+		WideCharToMultiByte(CP_UTF8, 0, t, (int)wcslen(t), x.data(), (int)x.size(),0,0);
+		return x.data();
+	}
+
 
 	class HASH
 	{
@@ -714,10 +721,10 @@ namespace TU
 
 		HRESULT Upload(std::function<HRESULT(size_t, size_t, void*)> func = nullptr,void* lp = 0)
 		{
-			map<string, tuple<vector<char>, vector<char>>> data;
+			map<string, tuple<vector<char>, vector<char>,vector<char>>> data;
 			for (auto& m : files)
 			{
-				tuple<vector<char>, vector<char>> t;
+				tuple<vector<char>, vector<char>,vector<char>> t;
 				if (FAILED(CreateDataForFile(m.Local.c_str(),t)))
 					return E_FAIL;
 				data[m.Remote] = t;
@@ -734,6 +741,7 @@ namespace TU
 				numfiles++;
 				PTR item = get<0>(m.second);
 				PTR sig = get<1>(m.second);
+				PTR name = get<2>(m.second);
 
 				// put the item
 				if (!item || !sig)
@@ -741,9 +749,12 @@ namespace TU
 				
 				string f1 = "fils-" + m.first;
 				string f2 = "sigs-" + m.first;
+				string f3 = "name-" + m.first;
 				if (FAILED(z.PutFile(f1.c_str(), item.p, (unsigned long)item.sz)))
 					return E_FAIL;
 				if (FAILED(z.PutFile(f2.c_str(), sig.p, (unsigned long)sig.sz)))
+					return E_FAIL;
+				if (FAILED(z.PutFile(f3.c_str(), name.p, (unsigned long)name.sz)))
 					return E_FAIL;
 			}
 
@@ -788,17 +799,26 @@ namespace TU
 			return S_OK;
 		}
 
-		HRESULT CreateDataForFile(const wchar_t* f, tuple<vector<char>, vector<char>>& t)
+		HRESULT CreateDataForFile(const wchar_t* f, tuple<vector<char>, vector<char>,vector<char>>& t)
 		{
-			t = make_tuple<vector<char>, vector<char>>({}, {});
+			t = make_tuple<vector<char>, vector<char>, vector<char>>({}, {}, {});
 			if (FAILED(LoadFile(f,get<0>(t))))
 				return E_FAIL;
 			if (FAILED(CreateSignatureFor(f,get<1>(t))))
 				return E_FAIL;
+
+			// And a friendly name
+			wchar_t xf[1000] = { 0 };
+			wcscpy_s(xf, 1000, f);
+			PathStripPath(xf);
+			string aa = a(xf);
+			get<2>(t).resize(aa.length());
+			memcpy(get<2>(t).data(), aa.data(), aa.length());
+
 			return S_OK;
 		}
 
-		HRESULT CreateDataForSelf(tuple<vector<char>, vector<char>>& t)
+		HRESULT CreateDataForSelf(tuple<vector<char>, vector<char>,vector<char>>& t)
 		{
 			auto a = Self();
 			return CreateDataForFile(a.c_str(), t);

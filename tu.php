@@ -61,7 +61,7 @@ class TU
 	{
 		$this->db = new SQLite3(TU_DATABASE);
 		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
-		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT)");
+		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT)");
 	}
 
 	function __construct() 
@@ -146,33 +146,72 @@ if (array_key_exists('admin',$_GET))
 			header("Location: tu.php?admin");
 			die;
 		}
-		echo '<div style="margin: 20px;">Admin Panel &mdash; <a href="tu.php?admin=1&logout=1">Logout</a><hr>';
-		echo 'Projects<br>';
-		printf("<ul>");
+		echo '<div style="margin: 20px;"><div id="hdr">Admin Panel  &mdash; <a href="javascript:np()">Create New Project</a> &mdash; <a href="tu.php?admin=1&logout=1">Logout</a><hr></div>';
+		echo '<div id="lp">Projects<br><br>';
+		printf('<table class="table"><thead><th></th><th>Name</th><th>GUID</th><th>Files</th><th>Actions</th></thead><tbody>');
 		$q = $tu->Query("SELECT * FROM PROJECT");
 		while ($r = $q->fetchArray())
 		{
-			printf('<li><a href="tu.php?admin=1&delete=%s">Delete</a> &mdash; %s &mdash; %s</li>',$r['ID'],$r['CLSID'],$r['NAME']);
-		}
-		printf("</ul>");
+			printf('<tr>');
+			printf('<td></td>');
+			printf('<td>%s</td>',$r['NAME']);
+			printf('<td>%s</td>',$r['CLSID']);
 
-		printf("<br><br><hr>Create new project<br><br>");
+			printf('<td>');
+			$q2 = $tu->Query("SELECT * FROM TU WHERE PID = ?",array($r['ID']));
+			while ($r2 = $q2->fetchArray())
+			{
+				printf('%s &mdash; <a href="tu.php?p=%s&f=%s&n=%s">Direct</a><br>',$r2['CLSID'],$r['CLSID'],$r2['CLSID'],$r2['NAME']);
+			}
+
+			printf('</td>');
+
+			printf('<td>');
+			printf('<a href="javascript:AskDelete(%s)">Delete</a>',$r['ID']);
+			printf('</td>');
+
+			printf('</tr>');
+		}
+		printf("</tbody></table></div>");
 		?>
-	 <form id="myform2" method="GET" action="tu.php" class="col s12">
+		<script>
+		function np()
+		{
+			$("#hdr").hide();
+			$("#lp").hide();
+			$("#newproj").show();
+		}
+		function sp()
+		{
+			$("#hdr").show();
+			$("#lp").show();
+			$("#newproj").hide();
+		}
+		function AskDelete(id)
+		{
+		var r = confirm("Are you sure you want to delete this project?");
+		if (r == true) { window.location = 'tu.php?admin=1&delete=' + id;		} 
+		else {		}
+			// 
+		}
+		</script>
+		<div id="newproj" style="display:none">
+	 <form id="myform2" method="GET" action="tu.php" autocomplete="off">
         <div class="form-group">
             <label for="name">Name:</label>
-            <input type="text" class="form-control" name="name" id="name" autofocus required/>
+            <input type="text" class="form-control" name="name" autofocus required  autocomplete="off"/>
         </div>
         <div class="form-group">
             <label for="p">Upload Password:</label>
-            <input type="password" class="form-control" name="p" id="p" required/>
+            <input type="password" class="form-control" name="p"  autocomplete="off" required/>
         </div>
             <input type="hidden" name="createp" id="createp" value="1" />
             <input type="hidden" name="admin" id="admin" value="1" />
         <div id="buttondiv"> <span style="opacity: 0.1;"><font color=\"black\" face=\"arial\" size=\"4\">_</font></div>
-        <button type="submit" name="submit" id="buttonsubmit" class="btn btn-primary btn-lg" >Create</button>
-        </button></form>
-  </div>
+        <button type="submit" name="submit" id="buttonsubmit" class="btn btn-primary btn-lg" >Create</button> 
+		<button type="button" onclick="sp();" class="btn btn-danger btn-lg" >Cancel</button> 
+        </form>
+		</div>
 		<?php
 		}
 	else
@@ -253,6 +292,8 @@ if ($function == "upload")
 		$f1 = file_get_contents($p1);
 		$p2 = sprintf("zip://%s#%s", $zn, "sigs-".$guid);
 		$f2 = file_get_contents($p2);
+		$p3 = sprintf("zip://%s#%s", $zn, "name-".$guid);
+		$f3 = file_get_contents($p3);
 
 		$e = $tu->Query("SELECT * FROM TU WHERE PID = ? AND CLSID = ?",array($prjrow['ID'],$guid))->fetchArray();
 		if (!$e)
@@ -265,7 +306,7 @@ if ($function == "upload")
 
 		$hs = base64_encode(hash("sha256",$f1,true));
 		$f1 = $tu->cmpr($f1);
-		$tu->Query("UPDATE TU SET FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f1,$f2,$hs,$guid));
+		$tu->Query("UPDATE TU SET NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
 	die("200");
