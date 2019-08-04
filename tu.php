@@ -197,19 +197,15 @@ if (array_key_exists('admin',$_GET))
 
 			printf('<td>');
 
-			printf('<table class="table"><thead><th>Name</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
-			$q2 = $tu->Query("SELECT * FROM TU WHERE PID = ?",array($r['ID']));
+			printf('<table class="table"><thead><th>Name</th><th>Size</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
+			$q2 = $tu->Query("SELECT *,LENGTH(cast(FILEX as blob)) AS LE FROM TU WHERE PID = ?",array($r['ID']));
 			while ($r2 = $q2->fetchArray())
 			{
 				printf("<tr>");
 				printf("<td>%s<br>",$r2['NAME']);
 				printf("%s</td>",$r2['CLSID']);
 
-/*				$stream = $tu->db->openBlob('TU', 'FILEX', $r2['ID']);
-				//$blobs = fstat($stream);
-				fclose($stream);
-				printf("<td>%s KB</td>",$blobs/1024);
-				*/
+				printf("<td>%.1f KB</td>",$r2['LE']/1024);
 				
 				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
 				if ($r2['COMPRESSED'] == 1)
