@@ -123,6 +123,10 @@ if (array_key_exists('admin',$_GET))
 	}
 
 	?>
+
+			<meta charset="utf-8">
+			  <meta name="viewport" content="width=device-width, initial-scale=1">
+			  <title>Control Panel</title>
 		    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
 <link href="https://fonts.googleapis.com/css?family=Noto+Serif|Tinos" rel="stylesheet">
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">

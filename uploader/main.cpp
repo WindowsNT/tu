@@ -62,8 +62,9 @@ int main(int argc,char** argv)
 				exit(0);
 			}
 			for (auto& fi : fils)
-				wprintf(L"\r\n - %s\r\n", fi.Local.c_str());
+				wprintf(L"\r\n - %s", fi.Local.c_str());
 
+			printf("\r\n");
 			hr = tu.Upload([](unsigned long long cur, unsigned long long sz, void* lp) -> HRESULT {
 				printf("\r");
 				printf("Uploading %llu / %llu bytes...",cur,sz);
