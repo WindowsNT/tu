@@ -524,16 +524,12 @@ if ($function == "patch")
 		// Update updates
 		if (!array_key_exists($e['CLSID'],$downs))
 		{
-
 			$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 			$blob = stream_get_contents($stream);
 			fclose($stream);
 			$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
 
-			$bw = $e['BW'];
-			$bw += (float)(strlen($blob)/(1024*1024));
-
-			$tu->Query("UPDATE TU SET UPDATES = ?,BW = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$bw,$e['CLSID']));
+			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
 			$downs[$e['CLSID']] = $blob;
 		}
 
