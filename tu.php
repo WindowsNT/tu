@@ -60,7 +60,7 @@ class TU
 	{
 		$this->db = new SQLite3(TU_DATABASE);
 		$this->Query("CREATE TABLE IF NOT EXISTS PROJECT (ID INTEGER PRIMARY KEY,CLSID TEXT,NAME TEXT,PWD TEXT)");
-		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER,UPDATES INTEGER,COMPRESSED INTEGER)");
+		$this->Query("CREATE TABLE IF NOT EXISTS TU (ID INTEGER PRIMARY KEY,PID INTEGER,CLSID TEXT,SIGNX BLOB,FILEX BLOB,HASH TEXT,NAME TEXT,DOWNLOADS INTEGER,CHECKS INTEGER,UPDATES INTEGER,BW REAL,COMPRESSED INTEGER)");
 	}
 
 	function __construct() 
@@ -85,12 +85,16 @@ if (array_key_exists('p',$_GET) && array_key_exists('f',$_GET))
 	if (!$frow)
 		die;
 
-	$tu->Query("UPDATE TU SET DOWNLOADS = ? WHERE CLSID = ?",array($frow['DOWNLOADS'] + 1,$frow['CLSID']));
+	$bw = $frow['BW'];
 
 	$stream = $tu->db->openBlob('TU', 'FILEX', $frow['ID']);
 	$blob = stream_get_contents($stream);
 	fclose($stream);
 	$blob = $tu->uncmpr($blob,$frow['COMPRESSED']);
+
+	$bw += (float)(strlen($blob)/(1024*1024));
+	$tu->Query("UPDATE TU SET DOWNLOADS = ?,BW = ? WHERE CLSID = ?",array($frow['DOWNLOADS'] + 1,$bw,$frow['CLSID']));
+
 
 	header("Content-Type: application/octet-stream");
 	header(sprintf("Content-Length: %s",strlen($blob)));
@@ -217,7 +221,7 @@ if (array_key_exists('admin',$_GET))
 			printf('%s - %s<br><br>',$r['NAME'],$r['CLSID']);
 
 
-			printf('<table class="table"><thead><th>Name</th><th>Size</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th></thead><tbody>');
+			printf('<table class="table"><thead><th>Name</th><th>Size</th><th>Link</th><th>Compression</th><th>Downloads</th><th>Checks</th><th>Updates</th><th>BW</th></thead><tbody>');
 			$q2 = $tu->Query("SELECT *,LENGTH(cast(FILEX as blob)) AS LE FROM TU WHERE PID = ?",array($r['ID']));
 			while ($r2 = $q2->fetchArray())
 			{
@@ -236,6 +240,7 @@ if (array_key_exists('admin',$_GET))
 				printf("<td>%s</td>",(int)$r2['DOWNLOADS']);
 				printf("<td>%s</td>",(int)$r2['CHECKS']);
 				printf("<td>%s</td>",(int)$r2['UPDATES']);
+				printf("<td>%s MB</td>",(int)$r2['BW']);
 
 				printf("</tr>");
 //				printf('%s &mdash; <br>',$r2['CLSID'],$r['CLSID'],$r2['CLSID'],$r2['NAME']);
@@ -379,7 +384,7 @@ if ($function == "upload")
 
 		$hs = base64_encode(hash("sha256",$f1,true));
 		$f1 = $tu->cmpr($f1,$e['COMPRESSED']);
-		$tu->Query("UPDATE TU SET CHECKS = 0,DOWNLOADS = 0,UPDATES = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
+		$tu->Query("UPDATE TU SET BW = 0,CHECKS = 0,DOWNLOADS = 0,UPDATES = 0,NAME = ?,FILEX = ?,SIGNX = ?,HASH = ? WHERE CLSID = ? ",array($f3,$f1,$f2,$hs,$guid));
 	}
 //	$tu->Query("VACUUM");
 	die("200");
@@ -442,7 +447,9 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		if ($function == "check" || $function == "checkandsig")
 			$tu->Query("UPDATE TU SET CHECKS = ? WHERE CLSID = ?",array((int)$e['CHECKS'] + 1,$e['CLSID']));
 		if ($function == "download")
+			{
 			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
+			}
 
 		$eh = base64_decode($e['HASH']);
 
@@ -517,11 +524,16 @@ if ($function == "patch")
 		// Update updates
 		if (!array_key_exists($e['CLSID'],$downs))
 		{
-			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
+
 			$stream = $tu->db->openBlob('TU', 'FILEX', $e['ID']);
 			$blob = stream_get_contents($stream);
 			fclose($stream);
 			$blob = $tu->uncmpr($blob,$e['COMPRESSED']);
+
+			$bw = $e['BW'];
+			$bw += (float)(strlen($blob)/(1024*1024));
+
+			$tu->Query("UPDATE TU SET UPDATES = ?,BW = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$bw,$e['CLSID']));
 			$downs[$e['CLSID']] = $blob;
 		}
 

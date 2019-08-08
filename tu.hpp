@@ -204,6 +204,31 @@ namespace TU
 			AddFiles({ tux });
 		}
 
+		void OneOff(const char* r,bool RunNow = false)
+		{
+			AddSelf(r);
+			auto hr = CheckWithSigs();
+			if (hr == S_OK)
+				return;
+			auto hre = E_FAIL;
+			if (hr == S_FALSE)
+				hre = DownloadDiff();
+			else
+			{
+				// Plain
+				hr = Check();
+				if (hr == S_FALSE)
+					hre = DownloadFull();
+			}
+
+			if (RunNow && SUCCEEDED(hre))
+			{
+				auto a = Self();
+				ShellExecute(0, L"open", a.c_str(), 0, 0, SW_SHOWNORMAL);
+				ExitProcess(0);
+			}
+		}
+
 		HRESULT CreateSignatureFor(const wchar_t* fil,vector<char>& sig)
 		{
 			if (!fil)

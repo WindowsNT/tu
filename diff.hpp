@@ -15,9 +15,6 @@
 #include <comdef.h>
 #include <atlbase.h>
 
-#ifndef _DIFF_H
-#define _DIFF_H
-
 #pragma warning(disable: 4456)
 #pragma warning(disable: 4458)
 namespace DIFFLIB
@@ -1071,4 +1068,3 @@ namespace DIFFLIB
 	};
 
 
-#endif // _DIFF_H
