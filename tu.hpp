@@ -134,6 +134,12 @@ namespace TU
 			tc.lpCallbackData = (LONG_PTR)this;
 
 			t = make_shared<thread>(&VisibleUpdate::Thr, this);
+			for (int i = 0; i < 10; i++)
+			{
+				Sleep(100);
+				if (hTask)
+					break;
+			}
 		}
 
 		~VisibleUpdate()
@@ -288,7 +294,7 @@ namespace TU
 
 		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION))
 		{
-			SetIcon(hIc);
+			SetIcon(hIc); 
 			AddSelf(r);
 			auto hr = CheckWithSigs();
 			if (hr == S_OK)
