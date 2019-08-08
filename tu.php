@@ -493,6 +493,7 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		$za2->close();
 
 		header("Content-Type: application/zip");
+		header(sprintf("Content-Length: %s",filesize($zn2)));
 		readfile($zn2);
 		unlink($zn2);
 		die;

@@ -6,6 +6,8 @@ namespace TU
 #include "zipall.h"
 #include "rest.h"
 
+
+
 	inline const wchar_t* OldSuffix = L".{1DAE2EA5-922C-4049-AD37-0AA3E0EE7DC0}.old";
 	using namespace std;
 	struct TUPATCH
@@ -84,6 +86,80 @@ namespace TU
 		return x.data();
 	}
 
+	class VisibleUpdate
+	{
+	public:
+
+		TASKDIALOGCONFIG tc = { 0 };
+		HWND hTask = 0;
+		bool Cancelled = false;
+		shared_ptr<std::thread> t;
+
+		void Thr()
+		{
+			CoInitializeEx(0, COINIT_APARTMENTTHREADED);
+			int p1 = 0;
+			int p2 = 0;
+			BOOL p3 = 0;
+			TaskDialogIndirect(&tc, &p1, &p2, &p3);
+		}
+
+		VisibleUpdate(HWND hParent = 0,HICON hIc = LoadIcon(0,IDI_INFORMATION))
+		{
+			tc.cbSize = sizeof(tc);
+			tc.hwndParent = hParent;
+			tc.pszWindowTitle = L"Update Process";
+			tc.hMainIcon = hIc;
+			tc.pszMainInstruction = L"Update Process";
+			tc.pszContent = L"Downloading updates...";
+			tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
+			tc.dwFlags = TDF_SHOW_PROGRESS_BAR | TDF_ALLOW_DIALOG_CANCELLATION | TDF_USE_HICON_MAIN;
+			tc.pfCallback = [](HWND hwnd, UINT uNotification, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData) -> HRESULT
+			{
+				VisibleUpdate* tu = (VisibleUpdate*)dwRefData;
+				if (uNotification == TDN_CREATED)
+				{
+					tu->hTask = hwnd;
+					SendMessage(hwnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(0, 100));
+					return S_OK;
+				}
+				if (uNotification == TDN_BUTTON_CLICKED)
+				{
+					tu->Cancelled = true;
+					return S_OK;
+				}
+				return S_OK;
+			};
+
+			tc.lpCallbackData = (LONG_PTR)this;
+
+			t = make_shared<thread>(&VisibleUpdate::Thr, this);
+		}
+
+		~VisibleUpdate()
+		{
+			if (IsWindow(hTask))
+				SendMessage(hTask, WM_CLOSE, 0, 0);
+			if (t)
+				t->join();
+			t = 0;
+			hTask = 0;
+		}
+
+		HRESULT Update(unsigned long long sent, unsigned long long tot)
+		{
+//			Sleep(1000);
+			if (Cancelled)
+				return E_FAIL;
+			if (!tot)
+				return S_OK;
+			sent *= 100;
+			sent /= tot;
+			SendMessage(hTask, TDM_SET_PROGRESS_BAR_POS, sent,0);
+			return S_OK;
+		}
+	};
+
 
 	class HASH
 	{
@@ -140,6 +216,7 @@ namespace TU
 		RESTAPI::REST rest;
 		string ProjectGuid;
 		ENDPOINT endpoint;
+		HICON hIC;
 
 		wstring TempFile()
 		{
@@ -204,8 +281,14 @@ namespace TU
 			AddFiles({ tux });
 		}
 
-		void OneOff(const char* r,bool RunNow = false)
+		void SetIcon(HICON h)
 		{
+			hIC = h;
+		}
+
+		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION))
+		{
+			SetIcon(hIc);
 			AddSelf(r);
 			auto hr = CheckWithSigs();
 			if (hr == S_OK)
@@ -516,13 +599,19 @@ namespace TU
 			wstring hdr3 = cl;
 			auto hIX = rest.RequestWithBuffer(endpoint.path.c_str(), L"POST", { hdr0,hdr1,hdr2,hdr3 }, zipdata.data(), zipdata.size(), 0, 0, true, 0);
 			vector<char> r;
+			shared_ptr<VisibleUpdate> vu;
+			if (!func && (mode == 3 || mode == 1))
+				vu = make_shared<VisibleUpdate>(nullptr,forward<HICON>(hIC));
 			rest.ReadToMemory(hIX, r, [&](unsigned long long sent, unsigned long long tot, void* lp) -> HRESULT
 				{
 					if (func)
 						return func(sent, tot, lp);
+					if (vu)
+						return vu->Update(sent, tot);
 					return S_OK;
 				},lp
 			);
+			vu = nullptr;
 
 			if (mode == 3)
 			{
