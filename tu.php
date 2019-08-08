@@ -2,7 +2,7 @@
 
 define('TU_DATABASE', "tu.db");
 define('TU_ADMIN_USERNAME','root');
-define('TU_ADMIN_PASSWORD','');
+define('TU_ADMIN_PASSWORD','muhahah');
 if (session_status() == PHP_SESSION_NONE) { session_start();}
 
 //ini_set('display_errors', 1); error_reporting(E_ALL);
