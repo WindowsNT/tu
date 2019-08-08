@@ -292,11 +292,13 @@ namespace TU
 			hIC = h;
 		}
 
-		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION))
+		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION),bool NoDiff = false)
 		{
 			SetIcon(hIc); 
 			AddSelf(r);
-			auto hr = CheckWithSigs();
+			auto hr = E_FAIL;
+			if (!NoDiff)
+				hr = CheckWithSigs();
 			if (hr == S_OK)
 				return;
 			auto hre = E_FAIL;
@@ -309,7 +311,7 @@ namespace TU
 				if (hr == S_FALSE)
 					hre = DownloadFull();
 			}
-
+			
 			if (RunNow && SUCCEEDED(hre))
 			{
 				auto a = Self();
