@@ -342,3 +342,4 @@ healthchecksdb
 /uploader/uploader.exe
 /uploader/inst.bat
 /uploader/uploader.tlog
+/ltest

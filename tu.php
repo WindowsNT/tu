@@ -657,6 +657,7 @@ if ($function == "patch")
 
 	$za2->close();
 	header("Content-Type: application/zip");
+	header(sprintf("Content-Length: %s",filesize($zn2)));
 	readfile($zn2);
 	unlink($zn2);
 	die;

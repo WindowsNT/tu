@@ -161,7 +161,7 @@ namespace TU
 				return S_OK;
 			sent *= 100;
 			sent /= tot;
-			SendMessage(hTask, TDM_SET_PROGRESS_BAR_POS, sent,0);
+			SendMessage(hTask, TDM_SET_PROGRESS_BAR_POS,(WPARAM) sent,0);
 			return S_OK;
 		}
 	};
