@@ -272,6 +272,17 @@ if (array_key_exists('admin',$_GET))
 			header("Location: tu.php?admin=1&project={$_GET['project']}");
 			die;
 		}
+		if (array_key_exists('resetstats',$_GET))
+		{
+			$prow = $tu->Query("SELECT * FROM PROJECT WHERE ID = ?",array($_GET['resetstats']))->fetchArray();
+			if ($prow )
+				{
+				$tu->Query("UPDATE TU SET DOWNLOADS = 0,CHECKS = 0,UPDATES = 0,BW = 0 WHERE PID = ?",array($_GET['resetstats']))->fetchArray();
+
+				}
+			header("Location: tu.php?admin=1&project={$_GET['resetstats']}");
+			die;
+		}
 		if (array_key_exists('createp',$_GET))
 		{
 //			print_r($_GET); die;
@@ -356,7 +367,8 @@ if (array_key_exists('admin',$_GET))
 			}
 			printf('</tbody></table>');
 
-			printf('<a href="javascript:AskDelete(%s)">Delete</a>',$r['ID']);
+			printf('<a href="tu.php?admin=1&resetstats=%s">Reset Stats</a>',$r['ID']);
+			printf(' &mdash; <a href="javascript:AskDelete(%s)">Delete</a>',$r['ID']);
 
 			printf("</div>");
 		}
@@ -551,6 +563,8 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 
 	$em = "200 ";
 	$em .= sprintf("%u",count($guids));
+	$downloadbw = array();
+	$downloadblobs = array();
 	foreach($guids as $guid)
 	{
 		$em .= ",";
@@ -564,9 +578,17 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 		// Update Checks
 		if ($function == "check" || $function == "checkandsig")
 			$tu->Query("UPDATE TU SET CHECKS = ? WHERE CLSID = ?",array((int)$e['CHECKS'] + 1,$e['CLSID']));
+
+		if ($function == "download" || $function == "hashes")
+			{
+			$blob = $tu->BlobRow($e);
+			$downloadblobs[$guid] = $blob;
+			}
+
 		if ($function == "download")
 			{
-			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
+			$downloadbw[$guid] = $e['BW'] + (float)(strlen($downloadblobs[$guid])/(1024*1024));
+			$tu->Query("UPDATE TU SET UPDATES = ?,BW = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$downloadbw[$guid],$e['CLSID']));
 			}
 
 		$eh = base64_decode($e['HASH']);
@@ -575,21 +597,18 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 			{
 				if ($function == "download")
 				{
-					$blob = $tu->BlobRow($e);
-					$za2->addFromString($guid,$blob);
+					$za2->addFromString($guid,$downloadblobs[$guid]);
 				}
 				if ($function == "checkandsig")
 				{
 					$stream = $tu->db->openBlob('TU', 'SIGNX', $e['ID']);
-					$blob = stream_get_contents($stream);
+					$blob2 = stream_get_contents($stream);
 					fclose($stream);
-			
-					$za2->addFromString($guid,$blob);
+					$za2->addFromString($guid,$blob2);
 				}
 				if ($function == "hashes")
 				{
-					$blob = $tu->BlobRow($e);
-					$ha = hash("sha256",$blob,true);
+					$ha = hash("sha256",$downloadblobs[$guid],true);
 		
 					$za2->addFromString($guid,$ha);
 				}
@@ -597,6 +616,9 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 			}
 		else
 			$em .= "220";
+
+
+		unset($downloadblobs[$guid]);
 	}
 
 	if($function == "download" || $function == "checkandsig"|| $function == "hashes")
@@ -622,6 +644,7 @@ if ($function == "patch")
 
 	$r = explode("|",file_get_contents('php://input'));
 	$downs = array();
+	$bws = array();
 	foreach($r as $rr)
 	{
 		$d = explode(",",$rr);
@@ -639,20 +662,28 @@ if ($function == "patch")
 			$blob = $tu->BlobRow($e);
 			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
 			$downs[$e['CLSID']] = $blob;
+			$bws[$e['CLSID']] = $e['BW'];
 		}
 
-	
 
 		if ($d[1] == "F")
 		{
 			// Full 
+			$bws[$e['CLSID']] += (float)(strlen($downs[$e['CLSID']])/(1024*1024));
 			$za2->addFromString($guid,$downs[$e['CLSID']]);
 		}
 		else
 		{
 			$po = substr($downs[$e['CLSID']],$d[2],$d[3]);
+			$bws[$e['CLSID']] += (float)(strlen($po)/(1024*1024));
 			$za2->addFromString($d[1],$po);
 		}
+	}
+
+	// Update new bandwidths
+	foreach($bws as $clsid => $bw)
+	{
+			$tu->Query("UPDATE TU SET BW = ? WHERE CLSID = ?",array($bw,$clsid));
 	}
 
 	$za2->close();
