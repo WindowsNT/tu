@@ -294,8 +294,13 @@ namespace TU
 
 		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION),bool NoDiff = false)
 		{
-			SetIcon(hIc); 
 			AddSelf(r);
+			return Off(RunNow, hIc, NoDiff);
+		}
+
+		void Off(bool RunNow = false, HICON hIc = LoadIcon(0, IDI_INFORMATION), bool NoDiff = false)
+		{
+			SetIcon(hIc);
 			auto hr = E_FAIL;
 			if (!NoDiff)
 				hr = CheckWithSigs();
@@ -311,7 +316,7 @@ namespace TU
 				if (hr == S_FALSE)
 					hre = DownloadFull();
 			}
-			
+
 			if (RunNow && SUCCEEDED(hre))
 			{
 				auto a = Self();
@@ -319,6 +324,8 @@ namespace TU
 				ExitProcess(0);
 			}
 		}
+
+
 
 		HRESULT CreateSignatureFor(const wchar_t* fil,vector<char>& sig)
 		{

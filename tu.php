@@ -291,6 +291,15 @@ if (array_key_exists('admin',$_GET))
 			header("Location: tu.php?admin");
 			die;
 		}
+		if (array_key_exists('fdel',$_GET))
+		{
+//			print_r($_GET); die;
+			$tu->Query("DELETE FROM TU WHERE CLSID = ?",array($_GET['fdel']));
+			unlink($_GET['fdel']);
+			$tu->Query("VACUUM");
+			header(sprintf("Location: tu.php?admin&project=%s",$_GET['project']));
+			die;
+		}
 		if (array_key_exists('delete',$_GET))
 		{
 			$tu->Query("DELETE FROM TU WHERE PID = ?",array($_GET['delete']));
@@ -352,7 +361,7 @@ if (array_key_exists('admin',$_GET))
 				else
 					printf("<td>%.1f KB</td>",$r2['LE']/1024);
 				
-				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a></td>',$r['CLSID'],$r2['CLSID']);
+				printf('<td><a href="tu.php?p=%s&f=%s">Direct</a> <a href="javascript:AskDeleteI(%s,\'%s\')">Delete</a></td>',$r['CLSID'],$r2['CLSID'],$r['ID'],$r2['CLSID']);
 				if ($r2['COMPRESSED'] == 1)
 					printf('<td><b>Yes</b> &mdash; <a href="tu.php?admin=1&uncompress=%s&project=%s">No</a></td>',$r2['CLSID'],$r['ID']);
 				else
@@ -390,6 +399,13 @@ if (array_key_exists('admin',$_GET))
 		{
 		var r = confirm("Are you sure you want to delete this project?");
 		if (r == true) { window.location = 'tu.php?admin=1&delete=' + id;		} 
+		else {		}
+			// 
+		}
+		function AskDeleteI(pid,id)
+		{
+		var r = confirm("Are you sure you want to delete this file?");
+		if (r == true) { window.location = 'tu.php?admin=1&fdel=' + id + "&project=" + pid;		} 
 		else {		}
 			// 
 		}
