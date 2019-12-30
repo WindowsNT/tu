@@ -295,17 +295,19 @@ namespace TU
 		void OneOff(const char* r,bool RunNow = false,HICON hIc = LoadIcon(0,IDI_INFORMATION),bool NoDiff = false)
 		{
 			AddSelf(r);
-			return Off(RunNow, hIc, NoDiff);
+			Off(RunNow, hIc, NoDiff);
 		}
 
-		void Off(bool RunNow = false, HICON hIc = LoadIcon(0, IDI_INFORMATION), bool NoDiff = false)
+		HRESULT Off(bool RunNow = false, HICON hIc = LoadIcon(0, IDI_INFORMATION), bool NoDiff = false,bool CheckOnly = false)
 		{
 			SetIcon(hIc);
 			auto hr = E_FAIL;
 			if (!NoDiff)
 				hr = CheckWithSigs();
 			if (hr == S_OK)
-				return;
+				return hr;
+			if (CheckOnly)
+				return hr;
 			auto hre = E_FAIL;
 			if (hr == S_FALSE)
 				hre = DownloadDiff();
@@ -323,6 +325,7 @@ namespace TU
 				ShellExecute(0, L"open", a.c_str(), 0, 0, SW_SHOWNORMAL);
 				ExitProcess(0);
 			}
+			return hr;
 		}
 
 
@@ -607,7 +610,7 @@ namespace TU
 			if (mode == 2)
 				hdr1 = L"X-Function: checkandsig";
 			if (mode == 3)
-				hdr1 = L"X-Function: patch";
+				hdr1 = L"X-Function: patch2";
 			wstring hdr2 = L"Content-Type: application/octet-stream";
 			wchar_t cl[1000];
 			swprintf_s(cl, 1000, L"Content-Length: %zu", zipdata.size());
@@ -631,7 +634,8 @@ namespace TU
 			if (mode == 3)
 			{
 				// Patch zip
-				ZIPUTILS::ZIP z(r.data(), r.size());
+				char* rz = r.data();
+				ZIPUTILS::ZIP z(rz, r.size());
 				vector<ZIPUTILS::mz_zip_archive_file_stat> l;
 				if (FAILED(z.EnumFiles(l)))
 					return E_FAIL;

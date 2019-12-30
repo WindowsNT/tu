@@ -3,7 +3,43 @@
 define('TU_DATABASE', "tu.db");
 define('TU_ADMIN_USERNAME','root');
 define('TU_ADMIN_PASSWORD','muhahah');
+
 if (session_status() == PHP_SESSION_NONE) { session_start();}
+set_time_limit(120);
+
+function subfile($fil,$from,$le)
+{
+	$fp = fopen($fil, "rb");
+	if (!$fp)
+		return "";
+	fseek($fp,$from,SEEK_SET);
+
+//	printf("$from $to $le\r\n");
+
+	$zn = tempnam(sys_get_temp_dir(),"partblow");
+	$fo = fopen($zn,"wb");
+	if (!$fo)
+		return "";
+
+	$fx = 0;
+	for(;;)
+	{
+		if ($fx == $le)
+			break;
+		$rem = $le - $fx;
+		if ($rem >= 1024*1024)
+			$rem = 1024*1024;
+		if ($rem == 0)
+			break;
+		$d = fread($fp,$rem);
+		fwrite($fo,$d);
+		$fx += strlen($d);
+	}
+
+	fclose($fp);
+	fclose($fo);
+	return $zn;
+}
 
 //ini_set('display_errors', 1); error_reporting(E_ALL);
 class TU
@@ -27,13 +63,67 @@ class TU
 	{
 		if ($comp == 0)
 			return $x;
-		return gzcompress($x);
+//		return gzcompress($x);
+		return gzencode($x);
 	}
 	public function uncmpr($x,$comp = 0)
 	{
 		if ($comp == 0)
 			return $x;
-		return gzuncompress($x);
+		//return gzuncompress($x);
+		return gzdecode($x);
+	}
+
+
+	public function gzUncompressFile($source,$dest){ 
+		$error = false; 
+		if ($fp_out = fopen($dest, "wb")) 
+		{
+			if ($fp_in = gzopen($source,'rb')) 
+			{ 
+				for(;;)
+				{
+					$ax = gzread($fp_in, 1024 * 512);
+					if (strlen($ax) === 0)
+						break;
+					fwrite($fp_out, $ax); 
+				}
+				gzclose($fp_in); 
+			} 
+			else 
+			{
+				$error = true; 
+			}
+			fclose($fp_out); 
+		} 
+		else 
+		{
+			$error = true; 
+		}
+
+		if ($error)
+			return false; 
+		else
+			return $dest; 
+	} 
+
+	public function BlobRowToTemp($e,$raw = 0)
+	{
+		$split = $this->Config("SPLIT","0");
+		if ($split == 1)
+		{
+			$blob = $e['CLSID'];
+			if ($raw == 0)
+			{
+				if ($e['COMPRESSED'] == 1)
+				{
+					$zn = tempnam(sys_get_temp_dir(),"blobrow");
+					$this->gzUncompressFile($blob,$zn);
+					$blob = $zn;
+				}
+			}
+			return $blob;
+		}
 	}
 
 	function BlobRow($e,$raw = 0)
@@ -649,6 +739,63 @@ if ($function == "check" || $function == "checkandsig" ||$function == "download"
 	}
 	die($em);
 }
+
+if ($function == "patch2")
+{
+	//ini_set('display_errors', 1); error_reporting(E_ALL);
+
+	$zn2 = tempnam(sys_get_temp_dir(),"zipx");
+	$za2 = new ZipArchive;
+	if (!$za2->open($zn2,ZipArchive::CREATE | ZipArchive::OVERWRITE))
+		die("500 Cannot create ZIP file");
+
+	$r = explode("|",file_get_contents('php://input'));
+	$downs = array();
+	$bws = array();
+	foreach($r as $rr)
+	{
+		$d = explode(",",$rr);
+		if (count($d) != 4)
+			die("500 Invalid Count");
+
+		$guid = $d[0];
+		$e = $tu->Query("SELECT * FROM TU WHERE PID = ? AND CLSID = ?",array($prjrow['ID'],$guid))->fetchArray();
+		if (!$e)
+			die("500 Invalid file");	
+
+		// Load file
+		if (!array_key_exists($e['CLSID'],$downs))
+		{
+			$blob = $tu->BlobRowToTemp($e);
+			$tu->Query("UPDATE TU SET UPDATES = ? WHERE CLSID = ?",array($e['UPDATES'] + 1,$e['CLSID']));
+			$downs[$e['CLSID']] = $blob;
+			$bws[$e['CLSID']] = $e['BW'];
+		}
+
+		if ($d[1] == "F")
+		{
+			// Full 
+			$bws[$e['CLSID']] += (float)(strlen($downs[$e['CLSID']])/(1024*1024));
+			$za2->addFile($downs[$e['CLSID']],$guid);
+		}
+		else
+		{
+			$po = subfile($downs[$e['CLSID']],$d[2],$d[3]);
+			$bws[$e['CLSID']] += (float)(filesize($po)/(1024*1024));
+			$za2->addFile($po,$d[1]);
+		}
+
+	}		
+
+	$za2->close();
+	header("Content-Type: application/zip");
+	header(sprintf("Content-Length: %s",filesize($zn2)));
+	readfile($zn2);
+	unlink($zn2);
+	die;
+	
+}
+
 
 if ($function == "patch")
 {
